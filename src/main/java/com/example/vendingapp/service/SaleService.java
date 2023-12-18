@@ -13,7 +13,11 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 @RequiredArgsConstructor
@@ -27,6 +31,21 @@ public class SaleService {
         List<Sale> sale = parseCSV(file);
         saleRepo.saveAll(sale);
         return sale.size();
+
+    }
+
+    public Map<BigDecimal, Long> getSale(LocalDateTime fromDate, LocalDateTime toDate) {
+
+        List<Sale> list = saleRepo.getSaleByDateBetween(fromDate, toDate);
+        List<BigDecimal> amounts = list.stream().map(sale -> sale.amount).toList();
+
+        Map<BigDecimal, Long> unsortedAmounts = amounts.stream()
+                .collect(Collectors.groupingBy(e -> e, Collectors.counting()));
+
+        return unsortedAmounts.entrySet()
+                .stream()
+                .sorted(Map.Entry.comparingByKey())
+                .collect(TreeMap::new, (map, entry) -> map.put(entry.getKey(), entry.getValue()), Map::putAll);
 
     }
 
@@ -45,16 +64,16 @@ public class SaleService {
                     .withSeparator(';')
                     .build();
 
+
             return csvToBean.parse()
                     .stream()
-                    .map(csvline -> Sale.builder()
-                            .date(csvline.getDate())
-                            .state(csvline.getStatus())
-                            .typeOfTransaction(csvline.getTransactionType())
-                            .amount(csvline.getAmount())
+                    .map(csvLine -> Sale.builder()
+                            .date(csvLine.getDate())
+                            .state(csvLine.getStatus())
+                            .typeOfTransaction(csvLine.getTransactionType())
+                            .amount(csvLine.getAmount())
                             .build())
                     .collect(Collectors.toList());
-
         }
     }
 
